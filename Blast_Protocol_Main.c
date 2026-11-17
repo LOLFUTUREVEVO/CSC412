@@ -33,11 +33,53 @@ int main(int argc, char** argv) {
     UserConfig conf; // The configuration we'll use for the program.
     
     setupApp(argc, argv, &conf);
+
+    printf("Header Size: %d\n", conf.headerSize);
+    printf("Setup Complete - BLAST Protocol initializing...\n\n");
     
     if(conf.userType == RECIEVER) {
         printf("User Type: RECIEVER\n");
-        // Need to create UDP socket / bind, wait for file and send ack ***
+        int sockfd = socket(AF_INET, SOCK_DGRAM, 0); // Create UDP socket
+        if (sockfd < 0) {
+            perror("Socket creation failed");
+            exit(EXIT_FAILURE);
+        }
+
+        struct sockaddr_in receiver_addr, sender_addr; 
+        memset(&receiver_addr, 0, sizeof(receiver_addr));
+        memset(&sender_addr, 0, sizeof(sender_addr));
+        
+        receiver_addr.sin_family = AF_INET; // Reciever's Address listens on port 8080
+        receiver_addr.sin_port = htons(8080); 
+        receiver_addr.sin_addr.s_addr = INADDR_ANY; // Use any available network interface
+
+        if (bind(sockfd, (const struct sockaddr *)&receiver_addr, sizeof(receiver_addr)) < 0) { // Bind socket to port (so the OS routes port 8080 traffic correctly)
+            perror("Bind failed");
+            exit(EXIT_FAILURE);
+        }
+
+        FILE_HDR header;
+        socklen_t len = sizeof(sender_addr);
+        printf("Listening on port 8080 for FILE_HDR...\n");
+
+        recvfrom(sockfd, &header, sizeof(header), 0, (struct sockaddr *)&sender_addr, &len); // Block & Wait (sender's set up packet)
+
+        printf("FILE_HDR received!\n");
+        printf("  -> Filename: %s\n", header.filename);
+        printf("  -> File Size: %ld bytes\n", header.fileSize);
+        printf("  -> Block Size: %d bytes\n", header.blockSize);
+
+        FILE_HDR_ACK ack; // Send ACK to sender (1 is all good!)
+        ack.status = 1; 
+
+        printf("Sending FILE_HDR_ACK back to sender...\n");
+        sendto(sockfd, &ack, sizeof(ack), 0, (const struct sockaddr *)&sender_addr, len);
+
+        printf("Phase 1 connection established.\n");
+        
+        close(sockfd); // Close socket (Need to start phase 2 here ***)
     }
+
     else {
         printf("User Type: SENDER\n"); 
         
@@ -76,8 +118,6 @@ int main(int argc, char** argv) {
         close(sockfd); // Close socket (need to add Phase 2***)
     }
 
-    printf("Header Size: %d\n", conf.headerSize);
-    printf("Setup Complete - BLAST Protocol initializing...\n\n");
     return 0;
 }
 
