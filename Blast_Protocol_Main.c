@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <err.h>
 #include <stdbool.h>
 #include <string.h> // for memset()
@@ -74,7 +73,7 @@ typedef struct { // Packet sent by RECIEVER (are they ready to recieve?)
 
 // Selection of header size is essential, and needs to be the same between both users.
 int main(int argc, char** argv) {
-    UserConfig conf; // The configuration we'll use for the program.
+    UserConfig conf = {UNDEFINED, 0}; // The configuration we'll use for the program.
     
     setupApp(argv, argc, &conf);
 
